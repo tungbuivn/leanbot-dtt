@@ -1,0 +1,96 @@
+#include <SoftwareSerial.h>
+#include <Arduino.h>
+
+int bluetoothTx = PIND3;
+int bluetoothRx = PIND2;
+// pinD1 is tx
+// pinD0 is rx
+SoftwareSerial bluetooth(PIND0, PIND1);  //rx,tx
+// SoftwareSerial bluetooth(bluetoothTx, PIND1);  //rx,tx
+// HardwareSerial &readPort = Serial;
+#define readPort Serial
+#define ledPin PIND0
+void setup()
+{
+  
+  //Setup usb serial connection to computer
+  readPort.begin(115200);
+  readPort.println("Hello");
+  // pinMode(ledPin, OUTPUT);
+  // while(1)
+  // {
+  //   digitalWrite(ledPin, HIGH);
+  //   delay(100);
+  //   digitalWrite(ledPin, LOW);
+  //   delay(100);
+  // }
+  // bluetooth.begin(115200);
+
+  //Setup Bluetooth serial connection to android
+  // bluetooth.begin(115200);
+  // bluetooth.print("$$$");
+  // // delay(1000);
+  // bluetooth.println("U,115200,N");
+  // bluetooth.println("AT+NAME");
+  //   bluetooth.begin(9600);
+}
+char buffer[100];
+int bufferIndex = 0;
+int countLine = 0;
+void readSerial()
+{
+  //  listen for the data
+  // if ( Serial.available() > 0 ) {
+    // read a numbers from serial port
+    int count = readPort.read();
+    // print out the received number
+    if (count != -1)
+    {
+      buffer[bufferIndex++] = count;
+      if (count == '\n')
+      {
+        countLine++;
+        buffer[bufferIndex++] = '\0';
+        readPort.print("You have input: ");
+        readPort.print(countLine);
+        readPort.print(" :");
+        readPort.println(buffer);
+        bufferIndex = 0;
+      }
+    }
+  // }
+
+}
+void loop()
+{
+  readSerial();
+  //Read from bluetooth and write to usb serial
+  // if(bluetooth.available())
+  // {
+  //   int toSend = bluetooth.read();
+  //   // Serial.println(toSend);
+  //   // Serial.print(toSend,HEX);
+  //   if (toSend != -1)
+  //   {
+  //     // Serial.println(toSend);
+  //     //  Serial.println(toSend, HEX);
+  //   }
+  // }
+
+  // //Read from usb serial to bluetooth
+  // if (Serial.available())
+  // {
+  //   int toSend = Serial.read();
+  //   if (toSend != -1)
+  //   {
+  //     // bluetooth.println('B');
+  //     // Serial.println('B', HEX);
+  //   }
+  // }
+  // if(Serial.available())
+  // {
+   
+   
+  //   Serial.println("toSend");
+  // }
+}

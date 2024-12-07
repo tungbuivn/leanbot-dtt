@@ -1,0 +1,24 @@
+#include <Arduino.h>
+void setup() {
+  // Start hardware serial communication with the computer (USB) at 9600 baud rate
+  Serial.begin(115200);
+
+  // Start hardware serial communication with the Bluetooth module (HC-06) at 9600 baud rate
+//   Serial1.begin(9600);  
+}
+
+void loop() {
+  // If data is available from the Bluetooth (HC-06)
+//   if (Serial1.available()) {
+//     char receivedChar = Serial1.read();
+//     // Print the received character to the Serial Monitor (USB)
+//     Serial.print(receivedChar);
+//   }
+
+  // If data is available from the Serial Monitor (USB)
+  if (Serial.available()) {
+    char sendChar = Serial.read();
+    // Send the data to the Bluetooth (HC-06)
+    Serial.write(sendChar);
+  }
+}
