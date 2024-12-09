@@ -33,7 +33,7 @@ jobs:
       - name: Download compiled chip
         uses: actions/download-artifact@v4
         with:
-          name: chip
+          name: chip 
           path: chip
       - name: Create a zip archive
         run: cd dist && zip -9 ../chip.zip chip.*
