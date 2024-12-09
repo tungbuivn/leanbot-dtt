@@ -16,7 +16,7 @@ avrdude.exe -v -patmega328p -cstk500v1 -PCOM8 -b19200 -U lfuse:r:low_fuse_val.tx
 
 ## flash bootloader in Arduino as ISP
 
-## nano board
+## nano board 
 
 avrdude "-C${env:HOMEDRIVE}${env:HOMEPATH}\AppData\Local\Arduino15\packages\arduino\tools\avrdude\6.3.0-arduino17/etc/avrdude.conf" -v -patmega328p -cstk500v1 -PCOM8 -b19200 -e  -u -F -U flash:w:ATmegaBOOT_168_atmega328.hex:i
 
