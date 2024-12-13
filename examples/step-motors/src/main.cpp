@@ -1,30 +1,24 @@
 // Example sketch to control a stepper motor with A4988 stepper motor driver
 // and Arduino without a library, now with acceleration support
 // More info: https://www.makerguides.com
+#ifdef ARDUINO
 #include <Arduino.h>
 #include <protothreads.h>
+#include "speed.h"
+#endif
 // Define stepper motor connections and steps per revolution:
 #define LEFT_DIR_PIN PIND7
 #define LEFT_STEP_PIN PIND6
 #define RIGHT_DIR_PIN PIND4
 #define RIGHT_STEP_PIN PIND5
-#define STEPS_PER_REVOLUTION 2048L
-#define RPMS 30
-#define MAX_STEPS_PER_SECOND (STEPS_PER_REVOLUTION * RPMS / 60L)
-#define STEP_DELAY_MICROSECONDS  450  //(1e6/MAX_STEPS_PER_SECOND)
-#define MAX_STEP_DELAY_MICROSECONDS 2000
-#define MIN_STEP_DELAY_MICROSECONDS STEP_DELAY_MICROSECONDS
-#define WHEEL_DIAMETER 30
-#define WHEEL_CIRCUMFERENCE (WHEEL_DIAMETER * PI)
-#define STEPS_PER_MM (STEPS_PER_REVOLUTION / WHEEL_CIRCUMFERENCE)
-#define MAX_ACCELERATION_STEPS 300
-#define DELAY_DELTA ((MAX_STEP_DELAY_MICROSECONDS - MIN_STEP_DELAY_MICROSECONDS)*1.0 / MAX_ACCELERATION_STEPS)
+
+const float num_stp = 98;
 
 struct StepperMotor : pt
 {
     unsigned long tm;
     unsigned long tmend;
-    unsigned long  steps;
+    unsigned long steps;
     int dir;
     void runStep(int steps, int dir);
 };
@@ -40,6 +34,9 @@ void StepperMotor::runStep(int steps, int dir)
 StepperMotor stepperMotor;
 SerialData ptSerial;
 int count = 0;
+float constant_speed_time = 0;
+float remaining_time = 0;
+float accelleration_time = 0;
 void setup()
 {
     // Declare pins as output:
@@ -53,38 +50,38 @@ void setup()
     digitalWrite(RIGHT_DIR_PIN, LOW);
     PT_INIT(&stepperMotor);
     PT_INIT(&ptSerial);
-    stepperMotor.steps=0;
-    Serial.println("Init ok");
-   
-    
+
+    Serial.println("Step delay: " + String(DELAY_TARGET) + "us");
+
+    Serial.println("Steps per revolution: " + String(STEPS_PER_REVOLUTION));
+    Serial.println("RPM: " + String(RPMS));
+    Serial.println("Steps per second: " + String(MAX_STEPS_PER_SECOND));
 }
 
-
-
+float delta = 5;
+float last_delay = 0;
 int runMotor(StepperMotor *motor)
 {
-    static float currentDelay =0;
-    static unsigned long tm=0;
-    static unsigned long tmend=0;
+    static int currentDelay = 0;
     static unsigned long accelerationSteps = 0;
     static unsigned long constantSpeedSteps = 0;
-    
-    static unsigned long   steps=0;
-    static unsigned long   i=0;
+    static int last_time = 0;
+    static long long sum_time = 0;
+    static unsigned long steps = 0;
+    static unsigned long i = 0;
+    static unsigned long j = 0;
     PT_BEGIN(motor);
-   
-    
 
-      while (true)
+    while (true)
     {
 
-        steps=motor->steps;
-        if (steps==0) {
+        steps = motor->steps;
+        if (steps == 0)
+        {
             PT_YIELD(motor);
             // motor->steps=0;
             continue;
         }
-
 
         if (motor->steps >= 2 * MAX_ACCELERATION_STEPS)
         {
@@ -96,43 +93,47 @@ int runMotor(StepperMotor *motor)
             accelerationSteps = motor->steps / 2;
             constantSpeedSteps = 0;
         }
-        
-         currentDelay = MAX_STEP_DELAY_MICROSECONDS;
-         tm=micros();
-         
-         
-         constantSpeedSteps=constantSpeedSteps;
-         
-        
-        
-        
+
+        sum_time=0;
+        j = -1;
         for (i = 0; i < steps; i++)
         {
-            if (i<accelerationSteps) {
-                currentDelay-=DELAY_DELTA;
-            } else if (i<accelerationSteps+constantSpeedSteps) {
-                currentDelay=MIN_STEP_DELAY_MICROSECONDS;
-            } else {
-                currentDelay+=DELAY_DELTA;
+            if (i < accelerationSteps)
+            {
+                currentDelay = MAX_STEP_DELAY_MICROSECONDS - pgm_read_word(&speed_table[i]);
+                last_time = currentDelay;
             }
+            else if (i < accelerationSteps + constantSpeedSteps)
+            {
+                currentDelay = DELAY_TARGET;
+                // Serial.println("total_time: "+String(currentDelay));
+            }
+            else
+            {
+                j++;
+
+                currentDelay = last_time + pgm_read_word(&speed_table[j]);
+            }
+            // Serial.println("Current delay: "+String(currentDelay));
+
             digitalWrite(LEFT_STEP_PIN, LOW);
             digitalWrite(RIGHT_STEP_PIN, LOW);
-            delayMicroseconds(currentDelay);
+            delayMicroseconds(currentDelay - 2);
             digitalWrite(LEFT_STEP_PIN, HIGH);
             digitalWrite(RIGHT_STEP_PIN, HIGH);
             delayMicroseconds(2);
+            sum_time += currentDelay;
+            //    total_time+=currentDelay;
             PT_YIELD(motor);
         }
-        
-           
-        tmend=micros();
-        Serial.println("time: "+String((tmend-tm)/1000)+"ms");
-        motor->steps=0;
+
+       
+        Serial.println("time: " + String((float)(sum_time) / 1000) + "ms " + "check time: " + String(steps * DELAY_TARGET / 1000) + "ms");
+
+        motor->steps = 0;
         // motor->i=0;
-        
     }
     PT_END(motor);
-    
 }
 
 int readSerialData(pt *pt)
@@ -143,13 +144,12 @@ int readSerialData(pt *pt)
         if (Serial.available() > 0)
         {
             char data = (char)Serial.read();
-            if (data=='a')
+          
+            if (data == ' ')
             {
-                PT_WAIT_UNTIL(pt, stepperMotor.steps==0);
-                stepperMotor.steps=2048+1024;
-                
+                PT_WAIT_UNTIL(pt, stepperMotor.steps == 0);
+                stepperMotor.steps = 2*2048;
             }
-            
         }
         PT_YIELD(pt);
     }
@@ -157,8 +157,7 @@ int readSerialData(pt *pt)
 }
 void loop()
 {
-   
+
     PT_SCHEDULE(runMotor(&stepperMotor));
     PT_SCHEDULE(readSerialData(&ptSerial));
-    
 }

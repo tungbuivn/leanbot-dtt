@@ -18,7 +18,7 @@
         "id": "stepper1",
         "top": -235.49,
         "left": -498.32,
-        "attrs": {}
+        "attrs": {"size": "17", "arrow": "red", "display": "steps","gearRatio":"10.24:1"}
       },
       {
         "type": "wokwi-a4988",
@@ -45,7 +45,7 @@
         "id": "stepper2",
         "top": 302.11,
         "left": -421.52,
-        "attrs": {}
+        "attrs": {  "size": "17", "arrow": "red", "display": "steps","gearRatio":"10.24:1" }
       }
     ],
     "connections": [
